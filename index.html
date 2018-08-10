@@ -14,7 +14,7 @@
         body{
             margin: 0;
         }
-        #qr{
+        #QR_code{
             position: absolute;
             top: 0;
             padding: 20px;
@@ -24,130 +24,191 @@
 </head>
 <body>
     <script>
-        var io = io.connect();
+        var location = 'samesjeabrookcargame.herokuapp.com/',
+            io = io.connect(),
+            current_url = window.location.href;
 
         io.on('connect', function(){
 
-            var game_connected = function(){
-                var url = "http://samesjeabrookcargame.herokuapp.com/?id="+io.id;
-                var urlText = document.getElementById('url_text')
-                urlText.innerHTML = url;
-                io.removeEventListener('game_connected', game_connected)
-                var qr = document.createElement('div');
-                qr.id = "qr";
-                document.body.appendChild(qr)
+            var game = function(location){
+                var QR_code_elem,
+                    create_QR = function(){
+                        var QR_code,
+                            url = 'http://' + location + '?id=' + io.id;
+                            QR_code_elem = doucment.createElement('div');
+                            QR_code_elem.id = "QR_code";
+                            document.appendChild(QR_code_elem);
+                            QR_code_elem = document.getElementById('QR_code');
+                            QR_code = new QRCode("QR_code");
+                            QR_code.makeCode(url);
+                    },
+                    game_connected = function(){
+                        create_QR();
 
-                var qr_code = new QRCode('qr');
-                qr_code.makeCode(url);
-            };
+                        io.removeListener('game_connected', game_connected)
+                    },
+                    var renderer = new THREE.WebGLRenderer({
+                        antialias : true
+                    }),
 
-            var renderer = new THREE.WebGLRenderer({
-                antialias : true
-            }),
+                    scene = new THREE.Scene(),
+                    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000),
 
-            scene = new THREE.Scene(),
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000),
+                    // lights
 
-            // lights
+                    ambient_light = new THREE.AmbientLight(0x222222),
+                    directional_light = new THREE.DirectionalLight(0xffffff, 1),
 
-            ambient_light = new THREE.AmbientLight(0x222222),
-            directional_light = new THREE.DirectionalLight(0xffffff, 1),
+                    // load JSON models
+                    loader = new THREE.JSONLoader(),
 
-            // load JSON models
-            loader = new THREE.JSONLoader(),
+                    floor = new THREE.Mesh(new THREE.PlaneBufferGeometry(300,300), new THREE.MeshLambertMaterial({color: 0x22FF11})),
 
-            floor = new THREE.Mesh(new THREE.PlaneBufferGeometry(300,300), new THREE.MeshLambertMaterial({color: 0x22FF11})),
+                    render = function(){
+                        renderer.render(scene, camera);
 
-            render = function(){
-                renderer.render(scene, camera);
+                        if(car){
+                            if(controller_state.steer){
+                                var percentage_speed = (speed / 2);
+                                car.rotateY(controller_state.steer * percentage_speed);
+                            }
+                            if(controller_state.accelerate){
+                                if(speed < 2){
+                                    speed += 0.05;
+                                } else{
+                                    speed = 2;
+                                }
+                            }else{
+                                if(0 < speed){
+                                    speed -= 0.05;
+                                }else{
+                                    speed = 0;
+                                }
+                            }
 
-                if(car){
-                    if(controller_state.steer){
-                        var percentage_speed = (speed / 2);
-                        car.rotateY(controller_state.steer * percentage_speed);
-                    }
-                    if(controller_state.accelerate){
-                        if(speed < 2){
-                            speed += 0.05;
-                        } else{
-                            speed = 2;
+                            car.translateZ(speed);
+                            if(car.position.x > 150) {
+                                car.position.x =150;
+                            }
+                            if(car.position.x < -150) {
+                                car.position.x = -150;
+                            }
+                            if(car.position.z > 150){
+                                car.position.z = 150;
+                            }
+                            if(car.position.z < -150){
+                                car.position.z = -150;
+                            }
                         }
-                    }else{
-                        if(0 < speed){
-                            speed -= 0.05;
+
+                        requestAnimationFrame(render);
+                    },
+
+                    car,
+                    speed = 0,
+                    controller_state = {}
+
+                    renderer.shadowMap.enabled = true;
+
+                    camera.position.z = -300;
+                    camera.position.y = 100;
+
+                    camera.lookAt(floor.position);
+
+                    directional_light.position.y = 150;
+                    directional_light.position.x = 100;
+                    directional_light.position.z = 60;
+
+                    directional_light.castShadow = true;
+
+                    floor.rotation.x = -90 * (Math.PI / 180);
+                    floor.recieveShadow = true;
+
+                    scene.add(camera);
+                    scene.add(ambient_light);
+                    scene.add(directional_light);
+                    scene.add(floor);
+
+                    loader.load(
+                        'public/car.js',
+                        function( geometry, materials ) {
+                            var material = new THREE.MeshFaceMaterial( materials );
+                            car = new THREE.Mesh( geometry, material );
+
+                            car.cashShadow=true;
+                            scene.add( car );
+
+                        }
+                    )
+
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    document.body.appendChild(renderer.domElement);
+
+                    render();
+
+                    io.emit('game_connect')
+
+                    io.on('game_connected', game_connected);
+
+                    io.on('controler_connected', function(connected){
+                        if(connected){
+                            QR_code_elem.style.display = "none";
                         }else{
-                            speed = 0;
+                            QR_code_elem.style.display = "block";
+                            controller_state={};
                         }
-                    }
+                    });
 
-                    car.translateZ(speed);
-                    if(car.position.x > 150) {
-                        car.position.x =150;
-                    }
-                    if(car.position.x < -150) {
-                        car.position.x = -150;
-                    }
-                    if(car.position.z > 150){
-                        car.position.z = 150;
-                    }
-                    if(car.position.z < -150){
-                        car.position.z = -150;
-                    }
-                }
-
-                requestAnimationFrame(render);
+                    io.on('controller_state_change', function(state){
+                        controller_state = state;
+                    });
             },
-
-            car,
-            speed = 0,
-            controller_state = {}
-
-            renderer.shadowMap.enabled = true;
-
-            camera.position.z = -300;
-            camera.position.y = 100;
-
-            camera.lookAt(floor.position);
-
-            directional_light.position.y = 150;
-            directional_light.position.x = 100;
-            directional_light.position.z = 60;
-
-            directional_light.castShadow = true;
-
-            floor.rotation.x = -90 * (Math.PI / 180);
-            floor.recieveShadow = true;
-
-            scene.add(camera);
-            scene.add(ambient_light);
-            scene.add(directional_light);
-            scene.add(floor);
-
-            loader.load(
-                'public/car.js',
-                function( geometry, materials ) {
-                    var material = new THREE.MeshFaceMaterial( materials );
-                    car = new THREE.Mesh( geometry, material );
-
-                    car.cashShadow=true;
-                    scene.add( car );
-
-                }
-            )
-
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            render();
             
-            io.emit('game_connect')
-
-            io.on('game_connected', game_connected);
-
-            if(window.location.href.indexOf('?id=') > 0){
-                io.emit('controller_connect', window.location.href.split('?id=')[1]);
-            }else{
+            controller = function(game_id){
+                io.emit('controller_connect', game_id);
                 
+                io.on('controller_connected', function(connected){
+                    if(connected){
+                        alert("Connected");
+                        var controller_state = {
+                            accelerate: false,
+                            steer: 0
+                        },
+
+                        emit_updates = function(){
+                            io.emit('controller_state_change', controller_state);
+                        }
+                        touchstart = function(e){
+                            e.preventDefault();
+                            controller_state.accelerate = true;
+                            emit_updates();
+                        }
+                        touchend = function(e){
+                            e.preventDefault()
+                            controller_state.accelerate = false;
+                            emit_updates();
+                        }
+                        devicemotion = function(e){
+                            controller_state.steer = e.accelerationIncludingGravity.y / 100;
+                            emit_updates();
+                        }
+
+                        document.body.addEventListener('touchstart', touchstart, false);
+                        document.body.addEventListener('MSPounterDown', touchstart, false);
+                        document.body.addEventListener('touchend', touchend, false);
+                        document.body.addEventListener('MSPointerUp', touchend, false);
+                        window.addEventListener('devicemotion', devicemotion, false);
+                    }else{
+                        alert("Not connected");
+                    }
+                });
+                    
+            }
+
+            if(current_url.indexOf('?id=') > 0){
+                controller(current_url.split('?id=')[1])
+            }else{
+                game(location);
             }
             
         });
@@ -190,9 +251,7 @@
             window.addEventListener('devicemotion', devicemotion, false);
         });
 
-        io.on('controller_state_change', function(state){
-            controller_state = state;
-        });
+        
 
     </script>
     <div id="url_text"></div>
