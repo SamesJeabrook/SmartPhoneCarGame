@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Smartphone contolled car game</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="//davidshimjs.github.com/qrcodejs/qrcode.min.js"></script>
+    <script src="//threejs.org/build/three.min.js"></script>
+
+    <style>
+        body{
+            margin: 0;
+        }
+        #qr{
+            position: absolute;
+            top: 0;
+            padding: 20px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        var io = io.connect();
+
+        io.on('connect', function(){
+
+            var game_connected = function(){
+                var url = "http://192.168.1.255:8080?id="+io.id;
+                var urlText = document.getElementById('url_text')
+                urlText.innerHTML = url;
+                io.removeEventListener('game_connected', game_connected)
+                var qr = document.createElement('div');
+                qr.id = "qr";
+                document.body.appendChild(qr)
+
+                var qr_code = new QRCode('qr');
+                qr_code.makeCode(url);
+            };
+
+            var renderer = new THREE.WebGLRenderer({
+                antialias : true
+            }),
+
+            scene = new THREE.Scene(),
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000),
+
+            // lights
+
+            ambient_light = new THREE.AmbientLight(0x222222),
+            directional_light = new THREE.DirectionalLight(0xffffff, 1),
+
+            // load JSON models
+            loader = new THREE.JSONLoader(),
+
+            floor = new THREE.Mesh(new THREE.PlaneBufferGeometry(300,300), new THREE.MeshLambertMaterial({color: 0x22FF11})),
+
+            render = function(){
+                renderer.render(scene, camera);
+
+                if(car){
+                    if(controller_state.steer){
+                        var percentage_speed = (speed / 2);
+                        car.rotateY(controller_state.steer * percentage_speed);
+                    }
+                    if(controller_state.accelerate){
+                        if(speed < 2){
+                            speed += 0.05;
+                        } else{
+                            speed = 2;
+                        }
+                    }else{
+                        if(0 < speed){
+                            speed -= 0.05;
+                        }else{
+                            speed = 0;
+                        }
+                    }
+
+                    car.translateZ(speed);
+                    if(car.position.x > 150) {
+                        car.position.x =150;
+                    }
+                    if(car.position.x < -150) {
+                        car.position.x = -150;
+                    }
+                    if(car.position.z > 150){
+                        car.position.z = 150;
+                    }
+                    if(car.position.z < -150){
+                        car.position.z = -150;
+                    }
+                }
+
+                requestAnimationFrame(render);
+            },
+
+            car,
+            speed = 0,
+            controller_state = {}
+
+            renderer.shadowMap.enabled = true;
+
+            camera.position.z = -300;
+            camera.position.y = 100;
+
+            camera.lookAt(floor.position);
+
+            directional_light.position.y = 150;
+            directional_light.position.x = 100;
+            directional_light.position.z = 60;
+
+            directional_light.castShadow = true;
+
+            floor.rotation.x = -90 * (Math.PI / 180);
+            floor.recieveShadow = true;
+
+            scene.add(camera);
+            scene.add(ambient_light);
+            scene.add(directional_light);
+            scene.add(floor);
+
+            loader.load(
+                'public/car.js',
+                function( geometry, materials ) {
+                    var material = new THREE.MeshFaceMaterial( materials );
+                    car = new THREE.Mesh( geometry, material );
+
+                    car.cashShadow=true;
+                    scene.add( car );
+
+                }
+            )
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            render();
+            
+            io.emit('game_connect')
+
+            io.on('game_connected', game_connected);
+
+            if(window.location.href.indexOf('?id=') > 0){
+                io.emit('controller_connect', window.location.href.split('?id=')[1]);
+            }else{
+                
+            }
+            
+        });
+
+
+        io.on('controller_connected', function(connected){
+            if(connected){
+                qr.style.display = "none";
+            }else{
+                qr.style.display = "block";
+                controller_state = {};
+            }
+            var controller_state = {
+                accelerate: false,
+                steer: 0
+            },
+
+            emit_updates = function(){
+                io.emit('controller_state_change', controller_state);
+            }
+            touchstart = function(e){
+                e.preventDefault();
+                controller_state.accelerate = true;
+                emit_updates();
+            }
+            touchend = function(e){
+                e.preventDefault()
+                controller_state.accelerate = false;
+                emit_updates();
+            }
+            devicemotion = function(e){
+                controller_state.steer = e.accelerationIncludingGravity.y / 100;
+                emit_updates();
+            }
+
+            document.body.addEventListener('touchstart', touchstart, false);
+            document.body.addEventListener('MSPounterDown', touchstart, false);
+            document.body.addEventListener('touchend', touchend, false);
+            document.body.addEventListener('MSPointerUp', touchend, false);
+            window.addEventListener('devicemotion', devicemotion, false);
+        });
+
+        io.on('controller_state_change', function(state){
+            controller_state = state;
+        });
+
+    </script>
+    <div id="url_text"></div>
+</body>
+</html>
