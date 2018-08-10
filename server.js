@@ -48,6 +48,7 @@ var express = require('express');
                 game_sockets[game_socket_id].socket.emit("controller_connected", true);
 
                 socket.on('controller_state_change', function(data){
+                    console.log(data);
                     if(game_sockets[game_socket_id]){
                         game_sockets[game_socket_id].socket.emit("controller_state_change", data)
                     }
