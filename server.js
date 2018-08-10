@@ -41,6 +41,8 @@ var express = require('express');
                     game_id: game_socket_id
                 }
 
+                socket.emit("controller_connected", true);
+
                 game_sockets[game_socket_id].controller_id = socket.id;
 
                 game_sockets[game_socket_id].socket.emit("controller_connected", true);
@@ -50,8 +52,6 @@ var express = require('express');
                         game_sockets[game_socket_id].socket.emit("controller_state_change", data)
                     }
                 });
-
-                socket.emit("controller_connected", true);
             }else{
                 console.log("Controller attempted to connect but failed");
 
