@@ -212,45 +212,6 @@
             }
             
         });
-
-
-        io.on('controller_connected', function(connected){
-            if(connected){
-                qr.style.display = "none";
-            }else{
-                qr.style.display = "block";
-                controller_state = {};
-            }
-            var controller_state = {
-                accelerate: false,
-                steer: 0
-            },
-
-            emit_updates = function(){
-                io.emit('controller_state_change', controller_state);
-            }
-            touchstart = function(e){
-                e.preventDefault();
-                controller_state.accelerate = true;
-                emit_updates();
-            }
-            touchend = function(e){
-                e.preventDefault()
-                controller_state.accelerate = false;
-                emit_updates();
-            }
-            devicemotion = function(e){
-                controller_state.steer = e.accelerationIncludingGravity.y / 100;
-                emit_updates();
-            }
-
-            document.body.addEventListener('touchstart', touchstart, false);
-            document.body.addEventListener('MSPounterDown', touchstart, false);
-            document.body.addEventListener('touchend', touchend, false);
-            document.body.addEventListener('MSPointerUp', touchend, false);
-            window.addEventListener('devicemotion', devicemotion, false);
-        });
-
         
 
     </script>
