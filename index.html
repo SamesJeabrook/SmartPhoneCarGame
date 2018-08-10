@@ -7,7 +7,7 @@
     <title>Smartphone contolled car game</title>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://davidshimjs.github.com/qrcodejs/qrcode.min.js"></script>
+    <script src="https://davidshimjs.github.io/qrcodejs/qrcode.min.js"></script>
     <script src="//threejs.org/build/three.min.js"></script>
 
     <style>
@@ -19,6 +19,17 @@
             top: 0;
             padding: 20px;
             background: #fff;
+        }
+        #controller{
+			position: absolute;
+			z-index: 9;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 100%;
+			width: 100%;
+			background: red;
         }
     </style>
 </head>
@@ -239,6 +250,11 @@
 
         // Controller set up
         controller = function(game_id){
+
+            var pressElement = docuemnt.createElement('div');
+            pressElement.id = "controller"
+
+            document.body.appendChild(pressElement);
 
             // Tell the server this client is connecting as a controller
             // sending the id of the game to connect to
