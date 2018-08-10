@@ -7,7 +7,7 @@
     <title>Smartphone contolled car game</title>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="//davidshimjs.github.com/qrcodejs/qrcode.min.js"></script>
+    <script src="https://davidshimjs.github.com/qrcodejs/qrcode.min.js"></script>
     <script src="//threejs.org/build/three.min.js"></script>
 
     <style>
@@ -34,7 +34,7 @@
                 var QR_code_elem,
                     create_QR = function(){
                         var QR_code,
-                            url = 'http://' + location + '?id=' + io.id;
+                            url = 'https://' + location + '?id=' + io.id;
                             QR_code_elem = document.createElement('div');
                             QR_code_elem.id = "QR_code";
                             document.appendChild(QR_code_elem);
