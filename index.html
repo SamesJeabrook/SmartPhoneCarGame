@@ -29,7 +29,7 @@
         io.on('connect', function(){
 
             var game_connected = function(){
-                var url = "http://192.168.1.255:8080?id="+io.id;
+                var url = "https://samesjeabrookcargame.herokuapp.com/?id="+io.id;
                 var urlText = document.getElementById('url_text')
                 urlText.innerHTML = url;
                 io.removeEventListener('game_connected', game_connected)
